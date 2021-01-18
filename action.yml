@@ -1,0 +1,19 @@
+name: 'Disconnect Task'
+description: 'Disconnect a Parasoft Service Virtualization server'
+author: 'Parasoft'
+inputs:
+  ctpUrl:
+    required: true
+    description: 'CTP URL'
+  ctpUsername:
+    required: true
+    description: 'CTP Username'
+  ctpPassword:
+    required: true
+    description: 'CTP Password'
+  server:
+    required: true
+    description: 'Host or name of the server'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
