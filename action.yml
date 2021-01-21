@@ -11,6 +11,9 @@ inputs:
   ctpPassword:
     required: true
     description: 'CTP Password'
+  serverType:
+    required: true
+    description: 'Used to specify server by host or name'
   server:
     required: true
     description: 'Host or name of the server'
