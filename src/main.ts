@@ -17,7 +17,7 @@ if (emBaseURL.path === '/') {
 var protocol : any = emBaseURL.protocol === 'https:' ? https : http;
 var protocolLabel = emBaseURL.protocol || 'http:';
 var username = core.getInput('ctpUsername');
-var serverType = core.getInput('serverType');
+var serverType = core.getInput('serverMatch');
 var serverValue =  core.getInput('server');
 
 var deleteFromEM = function<T>(path: string) : q.Promise<T>{
