@@ -1,6 +1,6 @@
 {
   "name": "disconnect-server-action",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Disconnect Server action",
   "main": "lib/main.js",

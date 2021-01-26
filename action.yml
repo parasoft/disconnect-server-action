@@ -1,4 +1,4 @@
-name: 'Disconnect Task'
+name: 'Disconnect Action'
 description: 'Disconnect a Parasoft Service Virtualization server'
 author: 'Parasoft'
 inputs:
