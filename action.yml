@@ -1,6 +1,9 @@
 name: 'Disconnect Action'
 description: 'Disconnect a Parasoft Service Virtualization server'
 author: 'Parasoft'
+branding:
+  icon: 'aperture'
+  color: 'blue'
 inputs:
   ctpUrl:
     required: true
