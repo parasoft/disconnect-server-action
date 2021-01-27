@@ -1,4 +1,4 @@
-name: 'Disconnect Action'
+name: 'Disconnect Server'
 description: 'Disconnect a Parasoft Service Virtualization server'
 author: 'Parasoft'
 branding:
