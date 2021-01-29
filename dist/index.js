@@ -3,7 +3,7 @@ require('./sourcemap-register.js');module.exports =
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 109:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
@@ -37,116 +37,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(186));
-const http = __nccwpck_require__(605);
-const https = __nccwpck_require__(211);
-const q = __nccwpck_require__(172);
-const url = __nccwpck_require__(835);
-// Get Environment Manager configuration
-var emBaseURL = url.parse(core.getInput('ctpUrl'));
-if (emBaseURL.path === '/') {
-    emBaseURL.path = '/em';
-}
-else if (emBaseURL.path === '/em/') {
-    emBaseURL.path = '/em';
-}
-var protocol = emBaseURL.protocol === 'https:' ? https : http;
-var protocolLabel = emBaseURL.protocol || 'http:';
-var username = core.getInput('ctpUsername');
-var serverType = core.getInput('serverMatch');
-var serverValue = core.getInput('server');
-var deleteFromEM = function (path) {
-    var def = q.defer();
-    var options = {
-        host: emBaseURL.hostname,
-        port: emBaseURL.port,
-        path: emBaseURL.path + path,
-        method: 'DELETE',
-        headers: {
-            'Accept': 'application/json'
-        }
-    };
-    if (protocolLabel === 'https:') {
-        options['rejectUnauthorized'] = false;
-        options['agent'] = false;
-    }
-    if (username) {
-        options['auth'] = username + ':' + core.getInput('ctpPassword');
-    }
-    console.log('DELETE ' + protocolLabel + '//' + options.host + ':' + options.port + options.path);
-    var responseString = "";
-    protocol.get(options, (res) => {
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => {
-            responseString += chunk;
-        });
-        res.on('end', () => {
-            console.log('    response ' + res.statusCode + ':  ' + responseString);
-            var responseObject = JSON.parse(responseString);
-            def.resolve(responseObject);
-        });
-    }).on('error', (e) => {
-        def.reject(e);
-    });
-    return def.promise;
-};
-var findServerInEM = function (path, property, name) {
-    var def = q.defer();
-    var options = {
-        host: emBaseURL.hostname,
-        port: emBaseURL.port,
-        path: emBaseURL.path + path,
-        headers: {
-            'Accept': 'application/json'
-        }
-    };
-    if (protocolLabel === 'https:') {
-        options['rejectUnauthorized'] = false;
-        options['agent'] = false;
-    }
-    if (username) {
-        options['auth'] = username + ':' + core.getInput('ctpPassword');
-    }
-    console.log('GET ' + protocolLabel + '//' + options.host + ':' + options.port + options.path);
-    var responseString = "";
-    protocol.get(options, (res) => {
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => {
-            responseString += chunk;
-        });
-        res.on('end', () => {
-            console.log('    response ' + res.statusCode + ':  ' + responseString);
-            var responseObject = JSON.parse(responseString);
-            if (typeof responseObject[property] === 'undefined') {
-                def.reject(property + ' does not exist in response object from ' + path);
-                return;
-            }
-            for (var i = 0; i < responseObject[property].length; i++) {
-                var match;
-                if (serverType == 'host') {
-                    match = responseObject[property][i].host;
-                }
-                else {
-                    match = responseObject[property][i].name;
-                }
-                if (match === name) {
-                    def.resolve(responseObject[property][i]);
-                    return;
-                }
-            }
-            def.reject('Could not find server by matching "' + name + '" in ' + property + ' from ' + path);
-            return;
-        });
-    }).on('error', (e) => {
-        def.reject(e);
-    });
-    return def.promise;
-};
+exports.run = void 0;
+const core = __importStar(__webpack_require__(186));
+const service = __importStar(__webpack_require__(511));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
-        findServerInEM('/api/v2/servers', 'servers', serverValue).then((server) => {
+        var ctpEndpoint = core.getInput('ctpUrl', { required: true });
+        var ctpUsername = core.getInput('ctpUsername', { required: true });
+        var ctpPassword = core.getInput('ctpPassword', { required: true });
+        var serverType = core.getInput('serverMatch', { required: true });
+        var serverValue = core.getInput('server', { required: true });
+        var ctpService = new service.WebService(ctpEndpoint, 'em', serverType, { username: ctpUsername, password: ctpPassword });
+        ctpService.findServerInEM('/api/v2/servers', 'servers', serverValue).then((server) => {
             core.debug('Found server ' + serverValue + 'by matching ' + serverType);
-            return deleteFromEM('/api/v2/servers/' + server.id);
+            return ctpService.deleteFromEM('/api/v2/servers/' + server.id);
         }).then((res) => {
             if (res.name) {
                 core.debug('Successfully disconnected server ' + res.name);
@@ -161,13 +65,142 @@ function run() {
         });
     });
 }
+exports.run = run;
 run();
 
 
 /***/ }),
 
+/***/ 511:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.WebService = void 0;
+const http = __webpack_require__(605);
+const https = __webpack_require__(211);
+const q = __webpack_require__(172);
+const url = __webpack_require__(835);
+class WebService {
+    constructor(endpoint, context, serverType, authorization) {
+        this.baseURL = url.parse(endpoint);
+        if (this.baseURL.path === '/') {
+            this.baseURL.path += context;
+        }
+        else if (this.baseURL.path === `/${context}/`) {
+            this.baseURL.path = `/${context}`;
+        }
+        this.serverType = serverType;
+        this.authorization = authorization;
+        this.protocol = this.baseURL.protocol === 'https:' ? https : http;
+        this.protocolLabel = this.baseURL.protocol || 'http:';
+    }
+    deleteFromEM(path) {
+        let def = q.defer();
+        let promise = new Promise((resolve, reject) => {
+            def.resolve = resolve;
+            def.reject = reject;
+        });
+        let options = {
+            host: this.baseURL.hostname,
+            port: this.baseURL.port,
+            path: this.baseURL.path + path,
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json'
+            }
+        };
+        if (this.protocolLabel === 'https:') {
+            options['rejectUnauthorized'] = false;
+            options['agent'] = false;
+        }
+        if (this.authorization) {
+            options['auth'] = this.authorization.username + ':' + this.authorization.password;
+        }
+        console.log('DELETE ' + this.protocolLabel + '//' + options.host + ':' + options.port + options.path);
+        var responseString = "";
+        this.protocol.get(options, (res) => {
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => {
+                responseString += chunk;
+            });
+            res.on('end', () => {
+                console.log('    response ' + res.statusCode + ':  ' + responseString);
+                var responseObject = JSON.parse(responseString);
+                def.resolve(responseObject);
+            });
+        }).on('error', (e) => {
+            def.reject(e);
+        });
+        return promise;
+    }
+    ;
+    findServerInEM(path, property, name) {
+        let def = q.defer();
+        let promise = new Promise((resolve, reject) => {
+            def.resolve = resolve;
+            def.reject = reject;
+        });
+        let options = {
+            host: this.baseURL.hostname,
+            port: this.baseURL.port,
+            path: this.baseURL.path + path,
+            headers: {
+                'Accept': 'application/json'
+            }
+        };
+        if (this.protocolLabel === 'https:') {
+            options['rejectUnauthorized'] = false;
+            options['agent'] = false;
+        }
+        if (this.authorization) {
+            options['auth'] = this.authorization.username + ':' + this.authorization.password;
+        }
+        console.log('GET ' + this.protocolLabel + '//' + options.host + ':' + options.port + options.path);
+        var responseString = "";
+        this.protocol.get(options, (res) => {
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => {
+                responseString += chunk;
+            });
+            res.on('end', () => {
+                console.log('    response ' + res.statusCode + ':  ' + responseString);
+                var responseObject = JSON.parse(responseString);
+                if (typeof responseObject[property] === 'undefined') {
+                    def.reject(property + ' does not exist in response object from ' + path);
+                    return;
+                }
+                for (var i = 0; i < responseObject[property].length; i++) {
+                    var match;
+                    if (this.serverType == 'host') {
+                        match = responseObject[property][i].host;
+                    }
+                    else {
+                        match = responseObject[property][i].name;
+                    }
+                    if (match === name) {
+                        def.resolve(responseObject[property][i]);
+                        return;
+                    }
+                }
+                def.reject('Could not find server by matching "' + name + '" in ' + property + ' from ' + path);
+                return;
+            });
+        }).on('error', (e) => {
+            def.reject(e);
+        });
+        return promise;
+    }
+    ;
+}
+exports.WebService = WebService;
+
+
+/***/ }),
+
 /***/ 351:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
@@ -179,8 +212,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(278);
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(278);
 /**
  * Commands
  *
@@ -253,7 +286,7 @@ function escapeProperty(s) {
 /***/ }),
 
 /***/ 186:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
@@ -274,11 +307,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const command_1 = __nccwpck_require__(351);
-const file_command_1 = __nccwpck_require__(717);
-const utils_1 = __nccwpck_require__(278);
-const os = __importStar(__nccwpck_require__(87));
-const path = __importStar(__nccwpck_require__(622));
+const command_1 = __webpack_require__(351);
+const file_command_1 = __webpack_require__(717);
+const utils_1 = __webpack_require__(278);
+const os = __importStar(__webpack_require__(87));
+const path = __importStar(__webpack_require__(622));
 /**
  * The code to exit an action
  */
@@ -498,7 +531,7 @@ exports.getState = getState;
 /***/ }),
 
 /***/ 717:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
@@ -513,9 +546,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const fs = __importStar(__nccwpck_require__(747));
-const os = __importStar(__nccwpck_require__(87));
-const utils_1 = __nccwpck_require__(278);
+const fs = __importStar(__webpack_require__(747));
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(278);
 function issueCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
@@ -2665,7 +2698,7 @@ module.exports = require("url");;
 /******/ 	var __webpack_module_cache__ = {};
 /******/ 	
 /******/ 	// The require function
-/******/ 	function __nccwpck_require__(moduleId) {
+/******/ 	function __webpack_require__(moduleId) {
 /******/ 		// Check if module is in cache
 /******/ 		if(__webpack_module_cache__[moduleId]) {
 /******/ 			return __webpack_module_cache__[moduleId].exports;
@@ -2680,7 +2713,7 @@ module.exports = require("url");;
 /******/ 		// Execute the module function
 /******/ 		var threw = true;
 /******/ 		try {
-/******/ 			__webpack_modules__[moduleId].call(module.exports, module, module.exports, __nccwpck_require__);
+/******/ 			__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
 /******/ 			threw = false;
 /******/ 		} finally {
 /******/ 			if(threw) delete __webpack_module_cache__[moduleId];
@@ -2693,11 +2726,11 @@ module.exports = require("url");;
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
-/******/ 	__nccwpck_require__.ab = __dirname + "/";/************************************************************************/
+/******/ 	__webpack_require__.ab = __dirname + "/";/************************************************************************/
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __nccwpck_require__(109);
+/******/ 	return __webpack_require__(109);
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
