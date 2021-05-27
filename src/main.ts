@@ -13,10 +13,11 @@ export async function run(): Promise<void> {
 
   ctpService.findServerInEM<EMSystem>('/api/v2/servers', 'servers', serverValue).then((server: VirtServer) => {
       core.debug('Found server ' + serverValue + 'by matching ' + serverType);
+      core.info('Disconnecting server: ' + server.name);
       return ctpService.deleteFromEM<VirtServer>('/api/v2/servers/' + server.id);
   }).then((res: VirtServer) => {
       if (res.name) {
-          core.debug('Successfully disconnected server ' + res.name);
+          core.info('Successfully disconnected server: ' + res.name);
       } else {
           core.debug('Error deleting server');
           core.setFailed('Error deleting server');
